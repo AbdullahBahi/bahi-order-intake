@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bahi-order-intake
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SHOPIFY_AI_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_AI_PASS
+        sync: false
+      - key: TOOL_PASSWORD
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true

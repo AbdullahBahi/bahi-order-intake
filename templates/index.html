@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>إدخال أوردر - باهي للعطور</title>
+<style>
+  :root {
+    --bg: #f5f2ee; --card: #ffffff; --ink: #2a2420; --muted: #7a6f65;
+    --accent: #8a6d3b; --accent-ink: #ffffff; --border: #e3ddd4; --danger: #b3402c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+    padding: 16px; padding-bottom: 96px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=tel], input[type=number], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 1rem; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 60px; resize: vertical; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; min-width: 0; }
+  .product-row {
+    border: 1px dashed var(--border); border-radius: 10px; padding: 10px; margin-bottom: 10px;
+  }
+  .product-row .row { margin-top: 6px; }
+  .remove-btn {
+    background: none; border: none; color: var(--danger); font-size: 0.85rem;
+    padding: 4px 0; cursor: pointer;
+  }
+  .add-btn, .submit-btn {
+    display: block; width: 100%; padding: 12px; border-radius: 10px; border: none;
+    font-size: 1rem; cursor: pointer;
+  }
+  .add-btn { background: #efe8de; color: var(--ink); margin-top: 4px; }
+  .submit-btn {
+    background: var(--accent); color: var(--accent-ink); font-weight: 600;
+    position: sticky; bottom: 12px; margin-top: 8px;
+  }
+  .flash { background: #fbe4df; color: var(--danger); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.9rem; }
+  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+  .shipping-note { font-size: 0.85rem; color: var(--accent); margin-top: 6px; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<h1>إدخال أوردر جديد — باهي للعطور</h1>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('create_order') }}" id="order-form">
+
+  <div class="card">
+    <label>اسم العميل</label>
+    <input type="text" name="customer_name" required>
+
+    <label>رقم الهاتف</label>
+    <input type="tel" name="phone" required placeholder="01xxxxxxxxx">
+
+    <label>المحافظة</label>
+    <select name="province" id="province-select" required>
+      <option value="">اختر المحافظة</option>
+      {% for p in provinces %}
+        <option value="{{ p.code }}" data-price="{{ p.price or '' }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    <div class="shipping-note" id="shipping-note"></div>
+
+    <label>العنوان بالتفصيل</label>
+    <textarea name="address1" required placeholder="الحي / الشارع / علامة مميزة"></textarea>
+  </div>
+
+  <div class="card" id="products-card">
+    <label style="margin-top:0">المنتجات</label>
+    <div id="products-container"></div>
+    <button type="button" class="add-btn" id="add-product">+ إضافة منتج</button>
+  </div>
+
+  <div class="card">
+    <label>طريقة الدفع</label>
+    <select name="payment_method" required>
+      {% for val, label in payment_methods %}
+        <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label>مصدر الطلب</label>
+    <select name="order_source">
+      {% for val, label in order_sources %}
+        <option value="{{ val }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label>ملاحظات (اختياري)</label>
+    <textarea name="notes" placeholder="أي تفاصيل إضافية"></textarea>
+  </div>
+
+  <button type="submit" class="submit-btn">تأكيد وإنشاء الأوردر</button>
+</form>
+
+<script>
+const PRODUCTS = {{ products | tojson }};
+const SIZES = {{ sizes | tojson }};
+const container = document.getElementById('products-container');
+let rowCount = 0;
+
+function addProductRow() {
+  rowCount += 1;
+  const row = document.createElement('div');
+  row.className = 'product-row';
+
+  const productOptions = PRODUCTS.map(p => `<option value="${p.handle}">${p.name}</option>`).join('');
+  const sizeOptions = SIZES.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  row.innerHTML = `
+    <select name="product_handle" required>
+      <option value="">اختر المنتج</option>
+      ${productOptions}
+    </select>
+    <div class="row">
+      <select name="product_size" required>
+        <option value="">الحجم</option>
+        ${sizeOptions}
+      </select>
+      <input type="number" name="product_qty" value="1" min="1" required>
+    </div>
+    <button type="button" class="remove-btn">حذف المنتج</button>
+  `;
+  row.querySelector('.remove-btn').addEventListener('click', () => {
+    if (container.children.length > 1) row.remove();
+  });
+  container.appendChild(row);
+}
+
+document.getElementById('add-product').addEventListener('click', addProductRow);
+addProductRow();
+
+const provinceSelect = document.getElementById('province-select');
+const shippingNote = document.getElementById('shipping-note');
+provinceSelect.addEventListener('change', () => {
+  const opt = provinceSelect.selectedOptions[0];
+  const price = opt && opt.dataset.price;
+  shippingNote.textContent = price ? `مصاريف الشحن لهذه المنطقة: ${price} جنيه` : '';
+});
+</script>
+</body>
+</html>
