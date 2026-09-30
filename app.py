@@ -190,6 +190,16 @@ def create_order():
 
     test_mode = form.get("test_mode") == "on"
 
+    address = {
+        "firstName": first_name,
+        "lastName": last_name,
+        "address1": address1,
+        "city": province_name,
+        "provinceCode": province_code,
+        "countryCode": "EG",
+        "phone": phone,
+    }
+
     order_input = {
         "lineItems": line_items,
         "phone": phone,
@@ -199,15 +209,8 @@ def create_order():
         "financialStatus": financial_status,
         "sourceName": "social_media_manual",
         "test": test_mode,
-        "shippingAddress": {
-            "firstName": first_name,
-            "lastName": last_name,
-            "address1": address1,
-            "city": province_name,
-            "provinceCode": province_code,
-            "countryCode": "EG",
-            "phone": phone,
-        },
+        "shippingAddress": address,
+        "billingAddress": address,
         "shippingLines": [
             {
                 "title": f"الشحن - {zone['zone']}",
