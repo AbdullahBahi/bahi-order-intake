@@ -187,6 +187,8 @@ def create_order():
     if notes:
         note_lines.append(f"ملاحظات: {notes}")
 
+    test_mode = form.get("test_mode") == "on"
+
     order_input = {
         "lineItems": line_items,
         "phone": phone,
@@ -194,6 +196,7 @@ def create_order():
         "tags": ["social-media", order_source or "manual", payment_method or "unknown"],
         "financialStatus": financial_status,
         "sourceName": "social_media_manual",
+        "test": test_mode,
         "shippingAddress": {
             "firstName": first_name,
             "lastName": last_name,
@@ -221,7 +224,9 @@ def create_order():
     numeric_id = order["id"].rsplit("/", 1)[-1]
     store_handle = SHOP.replace(".myshopify.com", "")
     admin_url = f"https://admin.shopify.com/store/{store_handle}/orders/{numeric_id}"
-    return render_template("result.html", order_name=order["name"], admin_url=admin_url)
+    return render_template(
+        "result.html", order_name=order["name"], admin_url=admin_url, test_mode=test_mode
+    )
 
 
 if __name__ == "__main__":
