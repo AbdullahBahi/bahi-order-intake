@@ -134,6 +134,7 @@ def create_order():
 
     customer_name = form.get("customer_name", "").strip()
     phone = form.get("phone", "").strip()
+    email = form.get("email", "").strip()
     address1 = form.get("address1", "").strip()
     province_code = form.get("province")
     payment_method = form.get("payment_method")
@@ -192,6 +193,7 @@ def create_order():
     order_input = {
         "lineItems": line_items,
         "phone": phone,
+        "email": email or None,
         "note": "\n".join(note_lines),
         "tags": ["social-media", order_source or "manual", payment_method or "unknown"],
         "financialStatus": financial_status,
@@ -214,7 +216,10 @@ def create_order():
         ],
     }
 
-    result = gql(ORDER_CREATE_MUTATION, {"order": order_input, "options": {"sendReceipt": False}})
+    send_receipt = bool(email) and not test_mode
+    result = gql(
+        ORDER_CREATE_MUTATION, {"order": order_input, "options": {"sendReceipt": send_receipt}}
+    )
     payload = result["orderCreate"]
     if payload["userErrors"]:
         flash("فشل إنشاء الأوردر: " + "; ".join(e["message"] for e in payload["userErrors"]))
