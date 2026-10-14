@@ -7,17 +7,17 @@ phone or desktop, without going through the storefront checkout.
 """
 import os
 import time
-from functools import wraps
 
 from flask import Flask, request, render_template, redirect, url_for, flash
 
+from auth import require_password
 from shopify_api import gql, SHOP
+import reviews
 from catalog import PRODUCTS, PROVINCES, SIZES, PAYMENT_METHODS, ORDER_SOURCES
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-not-secret")
-
-TOOL_PASSWORD = os.environ.get("TOOL_PASSWORD")
+app.register_blueprint(reviews.bp)
 
 _cache = {"data": None, "exp": 0}
 CACHE_TTL = 300  # seconds
@@ -38,23 +38,6 @@ ZONES_QUERY = """{ deliveryProfiles(first: 10) { edges { node { default
     zone { name countries { code { countryCode } provinces { code } } }
     methodDefinitions(first: 5) { edges { node { rateProvider { __typename
       ... on DeliveryRateDefinition { price { amount } } } } } } } } } } } } } }"""
-
-
-def require_password(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if not TOOL_PASSWORD:
-            return view(*args, **kwargs)
-        auth = request.authorization
-        if not auth or auth.password != TOOL_PASSWORD:
-            return (
-                "Authentication required",
-                401,
-                {"WWW-Authenticate": 'Basic realm="Order Intake"'},
-            )
-        return view(*args, **kwargs)
-
-    return wrapped
 
 
 def load_catalog(force=False):

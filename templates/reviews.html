@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مراجعة التقييمات - باهي للعطور</title>
+<style>
+  :root {
+    --bg: #f5f2ee; --card: #ffffff; --ink: #2a2420; --muted: #7a6f65;
+    --accent: #8a6d3b; --accent-ink: #ffffff; --border: #e3ddd4; --danger: #b3402c;
+    --gold: #C9A227;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+    padding: 16px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 6px; }
+  h2 { font-size: 1rem; margin: 22px 0 10px; color: var(--muted); }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .top a { color: var(--accent); font-size: 0.9rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 12px;
+  }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.85rem; color: var(--muted); }
+  .meta strong { color: var(--ink); }
+  .stars { color: var(--gold); letter-spacing: 1px; }
+  .body { margin: 8px 0 12px; line-height: 1.6; white-space: pre-wrap; }
+  .actions { display: flex; gap: 8px; }
+  .actions form { margin: 0; }
+  button {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.9rem; cursor: pointer; background: #efe8de; color: var(--ink);
+  }
+  button.approve { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  button.delete { background: none; color: var(--danger); border-color: transparent; }
+  .flash { background: #e9f3e6; color: #2f5d2a; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.9rem; }
+  .empty { color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>مراجعة التقييمات</h1>
+  <a href="{{ url_for('index') }}">← إدخال أوردر</a>
+</div>
+
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+{% endwith %}
+
+{% macro review_card(r, pending) %}
+  <div class="card">
+    <div class="meta">
+      <strong>{{ r.product_title }}</strong>
+      <span class="stars">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
+      <span>{{ r.author }}</span>
+      <span>{{ r.submitted_on }}</span>
+    </div>
+    <div class="body">{{ r.body }}</div>
+    <div class="actions">
+      {% if pending %}
+        <form method="post" action="{{ url_for('reviews.moderate', action='approve') }}">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <input type="hidden" name="product_id" value="{{ r.product_id }}">
+          <button class="approve">نشر</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('reviews.moderate', action='hide') }}">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <input type="hidden" name="product_id" value="{{ r.product_id }}">
+          <button>إخفاء</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('reviews.moderate', action='delete') }}"
+            onsubmit="return confirm('حذف التقييم نهائيًا؟');">
+        <input type="hidden" name="id" value="{{ r.id }}">
+        <input type="hidden" name="product_id" value="{{ r.product_id }}">
+        <button class="delete">حذف</button>
+      </form>
+    </div>
+  </div>
+{% endmacro %}
+
+<h2>في انتظار المراجعة ({{ pending|length }})</h2>
+{% for r in pending %}{{ review_card(r, true) }}{% else %}<p class="empty">مفيش تقييمات جديدة.</p>{% endfor %}
+
+<h2>منشورة على المتجر ({{ approved|length }})</h2>
+{% for r in approved %}{{ review_card(r, false) }}{% else %}<p class="empty">لسه مفيش تقييمات منشورة.</p>{% endfor %}
+</body>
+</html>
