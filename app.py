@@ -5,6 +5,7 @@ A single-password-protected form used to turn a DM conversation (Instagram/
 Facebook/TikTok/WhatsApp) into a real Shopify order in a few taps, from
 phone or desktop, without going through the storefront checkout.
 """
+import logging
 import os
 import time
 
@@ -13,11 +14,14 @@ from flask import Flask, request, render_template, redirect, url_for, flash
 from auth import require_password
 from shopify_api import gql, SHOP
 import reviews
+import whatsapp
 from catalog import PRODUCTS, PROVINCES, SIZES, PAYMENT_METHODS, ORDER_SOURCES
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-not-secret")
 app.register_blueprint(reviews.bp)
+app.register_blueprint(whatsapp.bp)
+logging.basicConfig(level=logging.INFO)
 
 _cache = {"data": None, "exp": 0}
 CACHE_TTL = 300  # seconds
