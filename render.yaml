@@ -20,3 +20,11 @@ services:
         sync: false
       - key: INSTAPAY_ADDRESS
         sync: false
+      - key: META_PIXEL_ID
+        sync: false
+      - key: META_CAPI_TOKEN
+        sync: false
+      - key: TIKTOK_PIXEL_CODE
+        sync: false
+      - key: TIKTOK_ACCESS_TOKEN
+        sync: false

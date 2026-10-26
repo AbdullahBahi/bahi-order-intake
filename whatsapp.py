@@ -23,6 +23,7 @@ import requests
 from flask import Blueprint, request
 
 from shopify_api import gql
+import conversions
 
 bp = Blueprint("whatsapp", __name__)
 log = logging.getLogger(__name__)
@@ -156,6 +157,9 @@ def orders_create():
     order = json.loads(raw or b"{}")
     order_name = order.get("name")
     order_gid = order.get("admin_graphql_api_id")
+
+    # DM orders bypass the storefront pixels; report them to Meta/TikTok.
+    conversions.report_purchase(order, normalize_phone(order_phone(order)))
 
     if not WA_TOKEN or not WA_PHONE_NUMBER_ID:
         log.warning("WhatsApp not configured; skipping %s", order_name)

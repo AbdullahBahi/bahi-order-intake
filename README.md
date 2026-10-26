@@ -160,10 +160,41 @@ python register_webhook.py https://bahi-order-intake.onrender.com
   `https://<رابطك>/healthz` كل 5 دقايق، أو
 - رقّي الـ Service لخطة مدفوعة.
 
-### التجربة
+### التجربة (واتساب)
 
 1. ضيف `WHATSAPP_SEND_TEST_ORDERS=1` في Render.
 2. اعمل أوردر Test من الفورم برقمك انت، مرة بالدفع عند الاستلام ومرة بإنستاباي.
 3. لو الرسالة موصلتش، شوف **Logs** في Render (هتلاقي سطر `WhatsApp rejected ...` فيه
    سبب الرفض من Meta).
 4. في الآخر شيل `WHATSAPP_SEND_TEST_ORDERS`.
+
+## تتبّع أوردرات الرسايل في ميتا وتيك توك
+
+أوردرات المتجر بتتبعت لميتا وتيك توك عن طريق تطبيقاتهم الرسمية على شوبيفاي. أما أوردرات
+الفورم دي فمش بتعدّي على الـ checkout، فالـ Pixel مش بيشوفها. عشان كده، أول ما أوردر من
+الفورم يوصل على `/webhooks/orders-create`، الأداة بتبعته لهم كـ Purchase من السيرفر
+(الكود في `conversions.py`)، ومعاه رقم العميل وإيميله واسمه بعد التشفير، عشان المنصة تعرف
+توصّله بالشخص اللي شاف الإعلان.
+
+- بيتبعت بس الأوردرات اللي `sourceName` بتاعها `social_media_manual`، يعني أوردرات الفورم.
+- لو Shopify بعت نفس الإشعار مرتين، الأوردر مش هيتحسب مرتين، لأن رقم الحدث مبني على رقم الأوردر.
+- كل منصة بتشتغل بس لما المتغيرات بتاعتها تتحط في Render.
+
+### المتغيرات
+
+| المتغير | تجيبه منين |
+|---|---|
+| `META_PIXEL_ID` | Meta Events Manager → الـ Pixel → الرقم تحت اسمه |
+| `META_CAPI_TOKEN` | نفس الـ Pixel → Settings → Conversions API → Generate access token |
+| `TIKTOK_PIXEL_CODE` | TikTok Events Manager → Web Events → الـ Pixel → الكود اللي جنب اسمه |
+| `TIKTOK_ACCESS_TOKEN` | نفس الـ Pixel → Settings → Events API → Generate Access Token |
+| `TIKTOK_PURCHASE_EVENT` | اختياري. اسم حدث الشراء اللي تطبيق تيك توك على شوبيفاي بيبعته (الافتراضي `CompletePayment`، ولو التطبيق بيبعت `Purchase` حطها) |
+
+### التجربة
+
+1. من Test events في Events Manager، خد الـ Test code بتاع كل منصة، وحطه في Render في
+   `META_TEST_EVENT_CODE` و`TIKTOK_TEST_EVENT_CODE`.
+2. اعمل أوردر Test من الفورم. هيظهر في تبويب Test events بس، من غير ما يتحسب شراء حقيقي.
+   (أوردرات الـ Test مبتتبعتش خالص لو الكود ده مش موجود.)
+3. لو مظهرش، شوف **Logs** في Render (هتلاقي سطر `rejected Purchase` فيه السبب).
+4. في الآخر شيل المتغيرين دول.
