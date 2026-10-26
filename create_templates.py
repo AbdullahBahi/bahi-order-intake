@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Create the two WhatsApp message templates via the Cloud API.
+"""Create the WhatsApp message templates via the Cloud API.
 
 Fallback for when WhatsApp Manager's UI refuses to create templates; the
 API also returns the precise reason when the account is restricted.
@@ -8,6 +8,7 @@ Reads WHATSAPP_TOKEN from the environment or from a local .env file
 (git-ignored), so the token never has to be pasted anywhere else.
 
 Usage:  python create_templates.py          # account health + create templates
+        python create_templates.py NAME...  # create only the named templates
         python create_templates.py --check  # account health only
 """
 import json
@@ -42,7 +43,20 @@ TEMPLATES = [
             "وبعد التحويل ابعت صورة الإيصال هنا في نفس المحادثة.\n\n"
             "الطلب هيتأكد ويتجهز للشحن أول ما نستلم التحويل."
         ),
-        "example": ["أحمد", "#1012", "1,250", "bahi@instapay"],
+        "example": ["أحمد", "#1012", "1,250", "https://ipn.eg/S/abdullahbahi.bm/instapay/9leWro"],
+    },
+    {
+        "name": "order_instapay_link",
+        "text": (
+            "أهلاً {{1}} 👋\n"
+            "شكراً لطلبك من باهي للعطور 🤍\n"
+            "تم استلام طلبك رقم {{2}} بإجمالي {{3}} جنيه شامل الشحن.\n\n"
+            "لتأكيد الطلب، ادفع المبلغ عن طريق إنستاباي من اللينك ده:\n"
+            "{{4}}\n\n"
+            "وبعد الدفع ابعت صورة الإيصال هنا في نفس المحادثة.\n\n"
+            "الطلب هيتأكد ويتجهز للشحن أول ما نستلم المبلغ."
+        ),
+        "example": ["أحمد", "#1012", "1,250", "https://ipn.eg/S/abdullahbahi.bm/instapay/9leWro"],
     },
 ]
 
@@ -76,7 +90,10 @@ def main():
     if "--check" in sys.argv:
         return
 
+    names = [a for a in sys.argv[1:] if not a.startswith("--")]
     for t in TEMPLATES:
+        if names and t["name"] not in names:
+            continue
         show(f"create {t['name']}", requests.post(
             f"{GRAPH}/{WABA_ID}/message_templates", headers=headers, timeout=30,
             json={

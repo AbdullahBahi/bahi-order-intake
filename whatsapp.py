@@ -34,7 +34,8 @@ WA_GRAPH_VERSION = os.environ.get("WHATSAPP_GRAPH_VERSION", "v23.0")
 WA_TEMPLATE_CONFIRM = os.environ.get("WA_TEMPLATE_CONFIRM", "order_confirmation")
 WA_TEMPLATE_INSTAPAY = os.environ.get("WA_TEMPLATE_INSTAPAY", "order_instapay_payment")
 WA_TEMPLATE_LANG = os.environ.get("WA_TEMPLATE_LANG", "ar")
-INSTAPAY_ADDRESS = os.environ.get("INSTAPAY_ADDRESS", "")
+INSTAPAY_ADDRESS = os.environ.get(
+    "INSTAPAY_ADDRESS", "https://ipn.eg/S/abdullahbahi.bm/instapay/9leWro")
 # Test orders (e.g. the form's test toggle) often carry made-up numbers, so
 # they are skipped unless explicitly enabled while trying the setup out.
 SEND_TEST_ORDERS = os.environ.get("WHATSAPP_SEND_TEST_ORDERS") == "1"
