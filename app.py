@@ -43,6 +43,48 @@ ZONES_QUERY = """{ deliveryProfiles(first: 10) { edges { node { default
     methodDefinitions(first: 5) { edges { node { rateProvider { __typename
       ... on DeliveryRateDefinition { price { amount } } } } } } } } } } } } } }"""
 
+# Automatic discounts only run at the storefront checkout; orderCreate ignores
+# them, so the form reads the live ones and applies them to the order itself.
+DISCOUNTS_QUERY = """{ automaticDiscountNodes(first: 25) { nodes { automaticDiscount {
+  __typename
+  ... on DiscountAutomaticBasic { title status
+    customerGets { value { ... on DiscountPercentage { percentage } }
+                   items { ... on AllDiscountItems { allItems } } } }
+  ... on DiscountAutomaticFreeShipping { title status
+    minimumRequirement { ... on DiscountMinimumSubtotal {
+      greaterThanOrEqualToSubtotal { amount } } }
+    destinationSelection { ... on DiscountCountryAll { allCountries }
+                           ... on DiscountCountries { countries } } } } } } }"""
+
+
+def load_discounts():
+    """Best active store-wide percentage offer and the lowest Egypt free-shipping threshold.
+
+    Only covers what the form can reproduce exactly: a percentage on all items
+    (Shopify keeps the best one, they don't stack) and free shipping above a
+    subtotal, which Shopify checks after the product discount.
+    """
+    offer = None
+    free_shipping_from = None
+    for node in gql(DISCOUNTS_QUERY)["automaticDiscountNodes"]["nodes"]:
+        d = node["automaticDiscount"]
+        if d.get("status") != "ACTIVE":
+            continue
+        if d["__typename"] == "DiscountAutomaticBasic":
+            pct = (d["customerGets"]["value"] or {}).get("percentage")
+            all_items = (d["customerGets"]["items"] or {}).get("allItems")
+            if pct and all_items and (not offer or pct > offer["percentage"]):
+                offer = {"title": d["title"], "percentage": pct}
+        elif d["__typename"] == "DiscountAutomaticFreeShipping":
+            dest = d.get("destinationSelection") or {}
+            if not (dest.get("allCountries") or "EG" in (dest.get("countries") or [])):
+                continue
+            req = (d.get("minimumRequirement") or {}).get("greaterThanOrEqualToSubtotal")
+            threshold = float(req["amount"]) if req else 0.0
+            if free_shipping_from is None or threshold < free_shipping_from:
+                free_shipping_from = threshold
+    return {"offer": offer, "free_shipping_from": free_shipping_from}
+
 
 def load_catalog(force=False):
     """Fetch (and cache) live variant IDs/prices and shipping zone prices."""
@@ -75,7 +117,8 @@ def load_catalog(force=False):
             for p in zone["countries"][0]["provinces"]:
                 province_price[p["code"]] = {"price": price, "zone": zone["name"]}
 
-    data = {"variants_by_handle": variants_by_handle, "province_price": province_price}
+    data = {"variants_by_handle": variants_by_handle, "province_price": province_price,
+            "discounts": load_discounts()}
     _cache["data"] = data
     _cache["exp"] = time.time() + CACHE_TTL
     return data
@@ -84,7 +127,7 @@ def load_catalog(force=False):
 ORDER_CREATE_MUTATION = """
 mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
   orderCreate(order: $order, options: $options) {
-    order { id name }
+    order { id name currentTotalPriceSet { shopMoney { amount } } }
     userErrors { field message }
   }
 }
@@ -110,6 +153,7 @@ def index():
         sizes=SIZES,
         payment_methods=PAYMENT_METHODS,
         order_sources=ORDER_SOURCES,
+        discounts=catalog["discounts"],
     )
 
 
@@ -137,6 +181,7 @@ def create_order():
     qtys = request.form.getlist("product_qty")
 
     line_items = []
+    subtotal = 0.0
     for handle, size, qty in zip(handles, sizes, qtys):
         if not handle or not size:
             continue
@@ -149,6 +194,7 @@ def create_order():
         except ValueError:
             qty_int = 1
         line_items.append({"variantId": variant["id"], "quantity": qty_int})
+        subtotal += float(variant["price"]) * qty_int
 
     if not line_items:
         flash("لازم تضيف منتج واحد على الأقل.")
@@ -158,6 +204,14 @@ def create_order():
     if not zone:
         flash("محافظة غير معروفة لمنطقة الشحن.")
         return redirect(url_for("index"))
+
+    discounts = catalog["discounts"]
+    offer = discounts["offer"]
+    discounted_subtotal = subtotal
+    if offer:
+        discounted_subtotal = subtotal - round(subtotal * offer["percentage"], 2)
+    threshold = discounts["free_shipping_from"]
+    free_shipping = threshold is not None and discounted_subtotal >= threshold
 
     name_parts = customer_name.split(" ", 1)
     first_name = name_parts[0]
@@ -200,11 +254,15 @@ def create_order():
         "billingAddress": address,
         "shippingLines": [
             {
-                "title": f"الشحن - {zone['zone']}",
-                "priceSet": {"shopMoney": {"amount": zone["price"], "currencyCode": "EGP"}},
+                "title": f"شحن مجاني - {zone['zone']}" if free_shipping else f"الشحن - {zone['zone']}",
+                "priceSet": {"shopMoney": {
+                    "amount": "0.00" if free_shipping else zone["price"], "currencyCode": "EGP"}},
             }
         ],
     }
+    if offer:
+        order_input["discountCode"] = {"itemPercentageDiscountCode": {
+            "code": offer["title"], "percentage": round(offer["percentage"] * 100, 2)}}
 
     send_receipt = bool(email) and not test_mode
     result = gql(
@@ -220,7 +278,8 @@ def create_order():
     store_handle = SHOP.replace(".myshopify.com", "")
     admin_url = f"https://admin.shopify.com/store/{store_handle}/orders/{numeric_id}"
     return render_template(
-        "result.html", order_name=order["name"], admin_url=admin_url, test_mode=test_mode
+        "result.html", order_name=order["name"], admin_url=admin_url, test_mode=test_mode,
+        total=order["currentTotalPriceSet"]["shopMoney"]["amount"],
     )
 
 

@@ -29,6 +29,7 @@
   {% if test_mode %}
     <p style="color:#b3402c;">ده أوردر تجريبي (Test order) — مش هيأثر على المخزون أو الإحصائيات، وتقدر تمسحه من الأدمن براحتك.</p>
   {% endif %}
+  <p style="color:#2a2420; font-weight:600;">الإجمالي بعد الخصم والشحن: {{ total }} جنيه</p>
   <p>تقدر تراجعه أو تعدله من لوحة تحكم Shopify.</p>
   <a class="btn" href="{{ admin_url }}" target="_blank" rel="noopener">فتح الأوردر في Shopify</a>
   <a class="link" href="{{ url_for('index') }}">إدخال أوردر جديد</a>

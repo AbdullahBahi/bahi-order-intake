@@ -87,6 +87,12 @@
 
   <div class="card" id="products-card">
     <label style="margin-top:0">المنتجات</label>
+    {% if discounts.offer or discounts.free_shipping_from is not none %}
+      <div class="shipping-note" style="margin-bottom:10px;">
+        {% if discounts.offer %}{{ discounts.offer.title }}: خصم {{ (discounts.offer.percentage * 100) | round | int }}% بيتطبق تلقائيًا على الأوردر.{% endif %}
+        {% if discounts.free_shipping_from is not none %}شحن مجاني لو الإجمالي بعد الخصم {{ discounts.free_shipping_from | round | int }} جنيه أو أكتر.{% endif %}
+      </div>
+    {% endif %}
     <div id="products-container"></div>
     <button type="button" class="add-btn" id="add-product">+ إضافة منتج</button>
   </div>
