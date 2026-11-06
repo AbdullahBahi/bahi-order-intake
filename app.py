@@ -250,6 +250,9 @@ def create_order():
         "financialStatus": financial_status,
         "sourceName": "social_media_manual",
         "test": test_mode,
+        # Store prices include VAT (like checkout orders). Without this, editing a
+        # form order later adds the tax on top of every changed line.
+        "taxesIncluded": True,
         "shippingAddress": address,
         "billingAddress": address,
         "shippingLines": [
