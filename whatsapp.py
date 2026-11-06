@@ -3,8 +3,9 @@
 
 Every new order (storefront checkout or this tool's form) gets a WhatsApp
 message on the customer's phone via the Meta WhatsApp Cloud API:
-- InstaPay orders that are not yet paid -> confirmation + transfer
-  instructions (template WA_TEMPLATE_INSTAPAY).
+- InstaPay orders that are not yet paid (storefront checkout, or the form's
+  "InstaPay - not paid yet" option) -> confirmation + payment link
+  (template WA_TEMPLATE_INSTAPAY).
 - Everything else (COD, or InstaPay already marked paid from the form)
   -> plain confirmation (template WA_TEMPLATE_CONFIRM).
 
@@ -89,9 +90,18 @@ def first_name(order):
     return "عميلنا العزيز"
 
 
+# Tag the order-intake form puts on InstaPay orders that are not paid yet
+# (form orders carry no payment gateway, only this tag).
+FORM_INSTAPAY_UNPAID_TAG = "instapay-unpaid"
+
+
 def needs_instapay_transfer(order):
+    if order.get("financial_status") == "paid":
+        return False
     gateways = " ".join(order.get("payment_gateway_names") or []).lower()
-    return "instapay" in gateways and order.get("financial_status") != "paid"
+    # The webhook payload sends tags as one comma-separated string.
+    tags = {t.strip() for t in (order.get("tags") or "").split(",")}
+    return "instapay" in gateways or FORM_INSTAPAY_UNPAID_TAG in tags
 
 
 def format_amount(amount):

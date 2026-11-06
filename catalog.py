@@ -56,7 +56,9 @@ SIZES = ["50 مل", "100 مل"]
 
 PAYMENT_METHODS = [
     ("cod", "الدفع عند الاستلام (COD)"),
-    ("instapay", "مدفوع مقدمًا - إنستاباي (تم تأكيد استلام المبلغ)"),
+    # Stays Pending; the customer gets the InstaPay payment link on WhatsApp.
+    ("instapay-unpaid", "إنستاباي - لسه متدفعش (هيتبعت للعميل لينك الدفع)"),
+    ("instapay","مدفوع مقدمًا - إنستاباي (تم تأكيد استلام المبلغ)"),
 ]
 
 ORDER_SOURCES = [
